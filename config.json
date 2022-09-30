@@ -1,9 +1,9 @@
 {
     "bot": {
-        "TOKEN": "5644662739:AAEJZlwVHpubSy-CV7TIwmQhkfe2sXErp5M",
-        "chat_id": 414923557,
+        "TOKEN": "BOT_TOKEN",
+        "chat_id": CHAT_ID,
         "admins_id": [
-            414923557
+            ADMIN_ID
         ]
     },
     "reminders": {
