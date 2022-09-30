@@ -1,11 +1,13 @@
 {
     "bot": {
-        "TOKEN": "BOT_TOKEN",
-        "chat_id": "int_CHAT_ID",
-        "admins_id": "int_ADMIN_ID"
+        "TOKEN": "5644662739:AAEJZlwVHpubSy-CV7TIwmQhkfe2sXErp5M",
+        "chat_id": 414923557,
+        "admins_id": [
+            414923557
+        ]
     },
-    "reminds": {
-        "remind_name": {
+    "reminders": {
+        "reminder_name": {
             "status": "True/False",
             "period": "PERIOD  // can be \"day\", \"week\", \"month\"",
             "day": [
