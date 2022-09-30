@@ -1,0 +1,22 @@
+{
+    "bot": {
+        "TOKEN": "BOT_TOKEN",
+        "chat_id": "int_CHAT_ID",
+        "admins_id": "int_ADMIN_ID"
+    },
+    "reminds": {
+        "remind_name": {
+            "status": "True/False",
+            "period": "PERIOD  // can be \"day\", \"week\", \"month\"",
+            "day": [
+                "Friday",
+                "Sunday",
+                "// can be 0-6 (0 - monday, 6 - sunday) for \"week\" period or 1-31 for \"month\" period"
+            ],
+            "time": [
+                "HH:MM  // can be 00:00-23:59"
+            ],
+            "message": "MESSAGE"
+        }
+    }
+}
