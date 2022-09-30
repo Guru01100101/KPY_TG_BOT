@@ -46,6 +46,18 @@ def admin_status(func):
             await func(message)
         else:
             await message.answer('Немає доступу')
+
+    return wrapper
+
+
+def log_errors(func):
+    @wraps(func)
+    async def wrapper(message: types.Message):
+        try:
+            await func(message)
+        except Exception as e:
+            logging.exception(e)
+
     return wrapper
 
 
@@ -62,8 +74,8 @@ async def send_id(config: dict, message: types.Message):
 @dp.message_handler(commands=['set_id'], prefix='!')
 @admin_status
 async def set_bot_id(config: dict, message: types.Message):
-        set_id(config, int(message.text.split()[1]))
-        await message.answer(f'Новий id для чату: {message.text.split()[1]}')
+    set_id(config, int(message.text.split()[1]))
+    await message.answer(f'Новий id для чату: {message.text.split()[1]}')
 
 
 @dp.message_handler(commands=['start'], prefix='!/')
@@ -101,15 +113,32 @@ async def stop(message: types.Message):
 @dp.message_handler(commands=['set_status'], prefix='!')
 @admin_status
 async def set_status(message: types.Message):
-    await set_status(read_config(), message.text.split()[1], bool(message.text.split()[2]))
-    await message.reply(f'Статус нагадування {message.text.split()[1]} було змінено на {bool(message.text.split()[2])}')
+    try:
+        config = read_config()
+        if len(message.text.split()) == 1:
+            await message.answer('Команда призначена для зміни статусу нагадування. '
+                                 'Для зміни статусу нагадування введіть команду !set_status <назва нагадування> '
+                                 '<статус>. <статус> може бути 1 (нагадувати) або 0 (не нагадувати)'
+                                 'Для перегляду статусу нагадувань введіть команду !get_status <назва нагадування>')
+        elif message.text.split()[1] == 'all':
+            for reminder in config['reminders']:
+                await set_status(config, reminder, bool(message.text.split()[2]))
+        else:
+            await set_status(read_config(), message.text.split()[1], bool(message.text.split()[2]))
+            await message.reply(f'Статус нагадування {message.text.split()[1]} було змінено на {bool(message.text.split()[2])}')
+    except IndexError:
+        await message.reply('Невірний формат команди')
 
 
 @dp.message_handler(commands=['get_status'], prefix='!')
 @admin_status
 async def get_status(message: types.Message):
     try:
-        if message.text.split()[1] == 'all':
+        if len(message.text.split()) == 1:
+            await message.answer('Команда призначена для перегляду статусу нагадування. '
+                                 'Для перегляду статусу нагадування введіть команду !get_status <назва нагадування>. '
+                                 'Для перегляду статусу всіх нагадувань введіть команду !get_status all')
+        elif message.text.split()[1] == 'all':
             config = read_config()
             for reminder in config['reminders']:
                 await message.reply(f'Статус нагадування {reminder} - {get_status(config, reminder)}')
@@ -117,8 +146,7 @@ async def get_status(message: types.Message):
             await message.reply(f'Статус нагадування {message.text.split()[1]} - '
                                 f'{get_status(read_config(), message.text.split()[1])}')
     except IndexError:
-        await message.reply('Ви не вказали назву нагадування або таке нагадування відсутнє.'
-                            'Для перегляду всіх нагадувань використовуйте команду !get_status all')
+        await message.reply('Таке нагадування відсутнє.')
 
 
 async def remind():
