@@ -7,7 +7,7 @@ import json
 import pytz
 import asyncio
 
-logging.basicConfig(level=logging.DEBUG, encoding='UTF-8')
+logging.basicConfig(level=logging.INFO, encoding='UTF-8')
 
 
 def read_config() -> dict:
@@ -30,11 +30,11 @@ def set_chat_id(config: dict, chat_id: int) -> None:
 
 
 def get_status(config: dict, reminder_name: str) -> dict:
-    return config[reminder_name]['status']
+    return config['reminders'][reminder_name]['status']
 
 
 def set_status(config: dict, reminder_name: str, status: bool = True) -> None:
-    config[reminder_name]['status'] = status
+    config['reminders'][reminder_name]['status'] = status
     with open('config.json', 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=4)
 
@@ -132,7 +132,7 @@ async def send_now(message: types.Message):
 
 @admin_status
 @dp.message_handler(commands=['set_status'], commands_prefix='!')
-async def set_status(message: types.Message):
+async def set_reminds_status(message: types.Message):
     try:
         config = read_config()
         if len(message.text.split()) == 1:
@@ -142,13 +142,13 @@ async def set_status(message: types.Message):
                                  'Для перегляду статусу нагадувань введіть команду !get_status <назва нагадування>')
         elif message.text.split()[1] == 'all':
             for reminder in config['reminders']:
-                await set_status(config, reminder, bool(message.text.split()[2]))
-                await message.reply(f'Статус нагадування {reminder} змінено на {bool(message.text.split()[2])}')
+                set_status(config, reminder, bool(int(message.text.split()[2])))
+                await message.reply(f'Статус нагадування {reminder} змінено на {bool(int(message.text.split()[2]))}')
             await message.answer('Статуси нагадувань успішно змінено')
         else:
-            await set_status(read_config(), message.text.split()[1], bool(message.text.split()[2]))
+            set_status(read_config(), message.text.split()[1], bool(int(message.text.split()[2])))
             await message.reply(
-                f'Статус нагадування {message.text.split()[1]} було змінено на {bool(message.text.split()[2])}')
+                f'Статус нагадування {message.text.split()[1]} було змінено на {bool(int(message.text.split()[2]))}')
     except Exception as e:
         await message.reply('Помилка: ' + str(e))
         await message.reply('Для перегляду синтаксу введіть команду !set_status')
@@ -156,7 +156,7 @@ async def set_status(message: types.Message):
 
 @admin_status
 @dp.message_handler(commands=['get_status'], commands_prefix='!')
-async def get_status(message: types.Message):
+async def get_reminds_status(message: types.Message):
     try:
         if len(message.text.split()) == 1:
             await message.answer('Команда призначена для перегляду статусу нагадування. '
@@ -173,28 +173,45 @@ async def get_status(message: types.Message):
         await message.reply('Таке нагадування відсутнє.')
 
 
+async def time_lap_remind(reminder_name: str, time: datetime.datetime):
+    for time_mark in read_config()['reminders'][reminder_name]['time']:
+        h, m = map(int, time_mark.split(":"))
+        if time.hour == h and time.minute == m:
+            await bot.send_message(read_config()['bot']['chat_id'], read_config()['reminders'][reminder_name][
+                'message'])
+            await bot.send_message(414923557, f'Нагадування {reminder_name} надіслано о {time_mark}')
+            print(time_mark)
+            print(f'Нагадування {reminder_name} надіслано')
+            await asyncio.sleep(60)
+        else:
+            await asyncio.sleep(1)
+
+
 async def remind(reminder_name, send_now_flag=False):
-    while read_config()['reminders'][reminder_name]['status']:
-        reminder = read_config()['reminders'][reminder_name]
-        now = dt.now(tz=pytz.timezone('Europe/Kiev'))
-        for time in reminder['time']:
-            h, m = map(int, time.split(":"))
-            if (now.hour == h and now.minute == m) or send_now_flag:
-                await bot.send_message(read_config()['bot']['chat_id'], reminder['message'])
-                await bot.send_message(414923557, f'Нагадування {reminder[reminder_name]} надіслано о {h}:{m}')
-                print(h, ':', m)
-                print(f'Нагадування {reminder[reminder_name]} надіслано')
-                await asyncio.sleep(60)
-            else:
-                await asyncio.sleep(1)
+    while True:
+        if read_config()['reminders'][reminder_name]['status']:
+            now = dt.now(tz=pytz.timezone('Europe/Kiev'))
+            if read_config()['reminders'][reminder_name]['period'] == 'day':
+                await time_lap_remind(reminder_name, now)
+            elif read_config()['reminders'][reminder_name]['period'] == 'week':
+                if now.weekday() in read_config()['reminders'][reminder_name]['day']:
+                    await time_lap_remind(reminder_name, now)
+            elif read_config()['reminders'][reminder_name]['period'] == 'month':
+                if now.day in read_config()['reminders'][reminder_name]['day']:
+                    await time_lap_remind(reminder_name, now)
+        else: await asyncio.sleep(1)
 
 
 async def on_startup(dp):
     for reminder_name in read_config()['reminders']:
-        asyncio.create_task(remind(reminder_name))
+        remind_loop.create_task(remind(reminder_name), name=reminder_name)
         print(f'Додано нагадування: {reminder_name}')
     print('Бот запущено')
 
 
-if __name__ == '__main__':
+def main():
     executor.start_polling(dp, on_startup=on_startup, skip_updates=True)
+
+
+if __name__ == '__main__':
+    main()
